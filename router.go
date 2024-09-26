@@ -2,10 +2,10 @@ package main
 
 import "net/http"
 
-func NewRouter() *http.ServeMux {
+func (app *application) NewRouter() *http.ServeMux {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/organization", HandleAddUser)
+	mux.HandleFunc("/organization", app.HandleAddUser)
 
 	return mux
 }
