@@ -56,6 +56,7 @@ func (h *Handler) HandleCreateUser(w http.ResponseWriter, r *http.Request) {
 	result, err := user.CreateUser(&payload)
 	if err != nil {
 		JSONError(w, http.StatusInternalServerError, err.Error())
+		return
 	}
 
 	JSONResponse(w, http.StatusOK, result)
@@ -76,6 +77,7 @@ func (h *Handler) HandleCreateOrganization(w http.ResponseWriter, r *http.Reques
 	result, err := organization.CreateOrganization(org)
 	if err != nil {
 		JSONError(w, http.StatusInternalServerError, err.Error())
+		return
 	}
 
 	JSONResponse(w, http.StatusOK, result)
@@ -95,6 +97,7 @@ func (h *Handler) HandleAddOrganizationUser(w http.ResponseWriter, r *http.Reque
 		err := helper.SendEmail(payload.Email)
 		if err != nil {
 			JSONError(w, http.StatusInternalServerError, err.Error())
+			return
 		}
 		JSONResponse(w, http.StatusOK, "email sent succesfully")
 	} else {
@@ -107,6 +110,7 @@ func (h *Handler) HandleAddOrganizationUser(w http.ResponseWriter, r *http.Reque
 		result, err := organization.CreateOrganizationUser(organization_user)
 		if err != nil {
 			JSONError(w, http.StatusInternalServerError, err.Error())
+			return
 		}
 		JSONResponse(w, http.StatusOK, result)
 	}
