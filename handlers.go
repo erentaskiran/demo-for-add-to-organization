@@ -108,6 +108,7 @@ func (h *Handler) HandleAddOrganizationUser(w http.ResponseWriter, r *http.Reque
 				return
 			}
 			JSONResponse(w, http.StatusOK, "email sent succesfully")
+			return
 		} else {
 
 			organization_user := &OrganizationUserCreated{
@@ -121,6 +122,8 @@ func (h *Handler) HandleAddOrganizationUser(w http.ResponseWriter, r *http.Reque
 				return
 			}
 			JSONResponse(w, http.StatusOK, result)
+			return
 		}
 	}
+	JSONError(w, http.StatusInternalServerError, "Failed to create organization user")
 }
