@@ -1,57 +1,98 @@
 package main
 
 import (
-	"context"
-	"fmt"
+	"database/sql"
+	"encoding/json"
 	"net/http"
-	"os"
-
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/ses"
-	"github.com/aws/aws-sdk-go-v2/service/ses/types"
 )
 
-func (app *application) HandleAddUser(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("asd")
-	err := app.SendEmail(Sender, Recipient, Subject, HtmlBody, TextBody)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+type Handler struct {
+	Db *sql.DB
+}
+
+func newHandler(db *sql.DB) *Handler {
+	return &Handler{
+		Db: db,
 	}
 }
-func (app *application) SendEmail(sender, recipient, subject, htmlBody, textBody string) error {
+func (h *Handler) HandleUser(w http.ResponseWriter, r *http.Request) {
 
-	client := ses.NewFromConfig(app.Cfg)
-
-	input := &ses.SendEmailInput{
-		Destination: &types.Destination{
-			ToAddresses: []string{
-				recipient,
-			},
-		},
-		Message: &types.Message{
-			Body: &types.Body{
-				Html: &types.Content{
-					Charset: aws.String("UTF-8"),
-					Data:    aws.String(htmlBody),
-				},
-				Text: &types.Content{
-					Charset: aws.String("UTF-8"),
-					Data:    aws.String(textBody),
-				},
-			},
-			Subject: &types.Content{
-				Charset: aws.String("UTF-8"),
-				Data:    aws.String(subject),
-			},
-		},
-		Source: aws.String(sender),
+	switch r.Method {
+	case http.MethodPost:
+		h.HandleCreateUser(w, r)
+	default:
+		http.Error(w, "invalid request method", http.StatusMethodNotAllowed)
 	}
+}
+func (h *Handler) HandleOrganization(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodPost:
+		h.HandleCreateOrganization(w, r)
+	default:
+		http.Error(w, "invalid request method", http.StatusMethodNotAllowed)
+	}
+}
+func (h *Handler) HandleOrganizationUser(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodPost:
+		h.HandleAddOrganizationUser(w, r)
+	default:
+		http.Error(w, "invalid request method", http.StatusMethodNotAllowed)
+	}
+}
 
-	_, err := client.SendEmail(context.TODO(), input)
+func (h *Handler) HandleCreateUser(w http.ResponseWriter, r *http.Request) {
+	var payload User
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	user := NewUserRepository(h.Db)
+
+	result, err := user.CreateUser(&payload)
 	if err != nil {
-		return fmt.Errorf("e-posta gönderilemedi: %v", err)
+		JSONError(w, http.StatusInternalServerError, err.Error())
 	}
 
-	return nil
+	JSONResponse(w, http.StatusOK, result)
+}
+
+func (h *Handler) HandleCreateOrganization(w http.ResponseWriter, r *http.Request) {
+	var payload Organization
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	organization := NewOrganizationRepository(h.Db)
+	org := &Organization{
+		Name:        payload.Name,
+		Description: payload.Description,
+		CreatedBy:   payload.UserID,
+	}
+	result, err := organization.CreateOrganization(org)
+	if err != nil {
+		JSONError(w, http.StatusInternalServerError, err.Error())
+	}
+
+	JSONResponse(w, http.StatusOK, result)
+}
+
+func (h *Handler) HandleAddOrganizationUser(w http.ResponseWriter, r *http.Request) {
+	var payload AddUserOrganizationPayload
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	organization := NewOrganizationRepository(h.Db)
+	organization_user := &OrganizationUserCreated{
+		OrganizationId: payload.OrganizationID,
+		UserId:         payload.UserID,
+		Role:           payload.Role,
+	}
+	result, err := organization.CreateOrganizationUser(organization_user)
+	if err != nil {
+		JSONError(w, http.StatusInternalServerError, err.Error())
+	}
+
+	JSONResponse(w, http.StatusOK, result)
 }

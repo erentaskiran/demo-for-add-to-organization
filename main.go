@@ -30,8 +30,8 @@ const (
 func main() {
 	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("us-east-1"))
 	if err != nil {
-		fmt.Errorf("AWS config yüklenemedi: %v", err)
-
+		fmt.Println(err)
+		os.Exit(1)
 	}
 
 	db, err := newDb()
